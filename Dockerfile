@@ -23,24 +23,32 @@ COPY packages/client/package.json packages/client/
 # Copy panda config needed by client's "prepare" lifecycle script (panda codegen)
 COPY packages/client/panda.config.ts packages/client/
 
-# Install dependencies
+# Install dependencies — cached as long as lockfile doesn't change
 RUN pnpm install --frozen-lockfile
 
-# Submodules:
-# In CI: actions/checkout@v4 with submodules: recursive handles this automatically.
-# Locally: run `git submodule update --init --recursive` before `docker build`.
-COPY packages/ packages/
+# ── Sub-dependencies (change rarely) ─────────────────────────────────────────
+# Copy each sub-package source separately so its build layer is only
+# invalidated when that package's own files change.
 
-# Build sub-dependencies (stoat.js, livekit-components, lingui plugins, panda css etc)
-RUN pnpm --filter stoat.js build && \
-  pnpm --filter solid-livekit-components build && \
-  pnpm --filter @lingui-solid/babel-plugin-lingui-macro build && \
-  pnpm --filter @lingui-solid/babel-plugin-extract-messages build && \
-  pnpm --filter client exec lingui compile --typescript && \
-  pnpm --filter client exec node scripts/copyAssets.mjs && \
-  pnpm --filter client exec panda codegen 
+COPY packages/stoat.js/ packages/stoat.js/
+RUN pnpm --filter stoat.js build
 
-# Build the client with placeholder env vars for runtime injection 
+COPY packages/solid-livekit-components/ packages/solid-livekit-components/
+RUN pnpm --filter solid-livekit-components build
+
+COPY packages/js-lingui-solid/ packages/js-lingui-solid/
+RUN pnpm --filter @lingui-solid/babel-plugin-lingui-macro build && \
+    pnpm --filter @lingui-solid/babel-plugin-extract-messages build
+
+# ── Client source (changes frequently) ───────────────────────────────────────
+COPY packages/client/ packages/client/
+
+# Compile translations, copy assets, generate panda CSS
+RUN pnpm --filter client exec lingui compile --typescript && \
+    pnpm --filter client exec node scripts/copyAssets.mjs && \
+    pnpm --filter client exec panda codegen
+
+# Build the client with placeholder env vars for runtime injection
 # these are replaced by inject.js at container run startup
 ENV VITE_API_URL=__VITE_API_URL__
 ENV VITE_WS_URL=__VITE_WS_URL__
@@ -63,7 +71,7 @@ WORKDIR /app
 COPY docker/package.json docker/package-lock.json docker/inject.js ./
 RUN npm ci --omit=dev
 
-# Copy built static assets stage 1
+# Copy built static assets from stage 1
 COPY --from=builder /build/packages/client/dist ./dist
 
 EXPOSE 5000
