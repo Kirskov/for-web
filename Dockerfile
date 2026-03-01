@@ -6,7 +6,7 @@ FROM node:24-alpine AS builder
 RUN apk add --no-cache git python3 make g++
 
 # Install pnpm
-RUN corepack enable && corepack prepare pnpm@10.28.1 --activate
+RUN corepack enable
 
 WORKDIR /build
 
@@ -61,7 +61,7 @@ WORKDIR /app
 
 # Copy the server package and install dependencies
 COPY docker/package.json docker/inject.js ./
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 # Copy built static assets stage 1
 COPY --from=builder /build/packages/client/dist ./dist
