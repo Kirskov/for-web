@@ -26,7 +26,7 @@ export function DeleteServerModal(
     },
     onSuccess: () => {
       closeAll();
-      navigate("/");
+      setTimeout(() => navigate("/"), 350);
     },
     onError: (error) => {
       if (error instanceof MFACancelledError) return;
