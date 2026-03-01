@@ -50,7 +50,7 @@ ENV VITE_HCAPTCHA_SITEKEY=__VITE_HCAPTCHA_SITEKEY__
 ENV VITE_CFG_ENABLE_VIDEO=__VITE_CFG_ENABLE_VIDEO__
 ENV BASE_PATH=/
 
-RUN pnpm --filter client exec vite build
+RUN NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter client exec vite build
 
 # ============================================
 # Stage 2: Minimal runtime image
