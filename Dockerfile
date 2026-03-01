@@ -24,8 +24,9 @@ COPY packages/client/package.json packages/client/
 COPY packages/client/panda.config.ts packages/client/
 
 # Install dependencies — cached as long as lockfile doesn't change
-RUN pnpm install --frozen-lockfile && \
-    npx --yes update-browserslist-db@latest
+RUN pnpm install --frozen-lockfile
+
+ENV BROWSERSLIST_IGNORE_OLD_DATA=1
 
 # ── Sub-dependencies (change rarely) ─────────────────────────────────────────
 # Copy each sub-package source separately so its build layer is only
