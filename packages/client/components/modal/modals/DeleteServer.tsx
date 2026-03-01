@@ -2,6 +2,7 @@ import { Trans } from "@lingui-solid/solid/macro";
 import { useMutation } from "@tanstack/solid-query";
 
 import { useClient } from "@revolt/client";
+import { useNavigate } from "@revolt/routing";
 import { Dialog, DialogProps } from "@revolt/ui";
 
 import { MFACancelledError, useModals } from "..";
@@ -14,6 +15,7 @@ export function DeleteServerModal(
   props: DialogProps & Modals & { type: "delete_server" },
 ) {
   const client = useClient();
+  const navigate = useNavigate();
   const { showError, mfaFlow } = useModals();
 
   const deleteServer = useMutation(() => ({
@@ -22,7 +24,10 @@ export function DeleteServerModal(
       await mfaFlow(mfa as never);
       await props.server.delete(); // TODO: should use ticket in API
     },
-    onSuccess: () => props.onClose(),
+    onSuccess: () => {
+      props.onClose();
+      navigate("/");
+    },
     onError: (error) => {
       if (error instanceof MFACancelledError) return;
       showError(error);
