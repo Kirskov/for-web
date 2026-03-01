@@ -149,12 +149,15 @@ export class ModalControllerExtended extends ModalController {
    * @param mfa MFA helper
    */
   mfaFlow(mfa: MFA) {
-    return new Promise((callback: (ticket?: MFATicket) => void) =>
+    return new Promise<MFATicket>((resolve, reject) =>
       this.openModal({
         type: "mfa_flow",
         state: "known",
         mfa,
-        callback,
+        callback: (ticket?: MFATicket) => {
+          if (ticket) resolve(ticket);
+          else reject(new Error("MFA cancelled"));
+        },
       }),
     );
   }
