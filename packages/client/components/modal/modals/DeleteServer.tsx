@@ -16,7 +16,7 @@ export function DeleteServerModal(
 ) {
   const client = useClient();
   const navigate = useNavigate();
-  const { showError, mfaFlow } = useModals();
+  const { showError, mfaFlow, closeAll } = useModals();
 
   const deleteServer = useMutation(() => ({
     mutationFn: async () => {
@@ -25,7 +25,7 @@ export function DeleteServerModal(
       await props.server.delete(); // TODO: should use ticket in API
     },
     onSuccess: () => {
-      props.onClose();
+      closeAll();
       navigate("/");
     },
     onError: (error) => {
