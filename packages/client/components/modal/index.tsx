@@ -15,6 +15,12 @@ import { Keybind, KeybindAction } from "@revolt/keybinds";
 import { RenderModal } from "./modals";
 import { Modals } from "./types";
 
+export class MFACancelledError extends Error {
+  constructor() {
+    super("MFA cancelled");
+  }
+}
+
 export type ActiveModal = {
   /**
    * Unique modal Id
@@ -156,7 +162,7 @@ export class ModalControllerExtended extends ModalController {
         mfa,
         callback: (ticket?: MFATicket) => {
           if (ticket) resolve(ticket);
-          else reject(new Error("MFA cancelled"));
+          else reject(new MFACancelledError());
         },
       }),
     );

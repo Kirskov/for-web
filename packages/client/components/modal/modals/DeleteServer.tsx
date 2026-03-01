@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/solid-query";
 import { useClient } from "@revolt/client";
 import { Dialog, DialogProps } from "@revolt/ui";
 
-import { useModals } from "..";
+import { MFACancelledError, useModals } from "..";
 import { Modals } from "../types";
 
 /**
@@ -22,7 +22,10 @@ export function DeleteServerModal(
       await mfaFlow(mfa as never);
       await props.server.delete(); // TODO: should use ticket in API
     },
-    onError: showError,
+    onError: (error) => {
+      if (error instanceof MFACancelledError) return;
+      showError(error);
+    },
   }));
 
   return (
