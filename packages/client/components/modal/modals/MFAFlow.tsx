@@ -100,7 +100,11 @@ export function MFAFlowModal(
       props.onClose();
     } catch (error: unknown) {
       const msg =
-        error instanceof Error ? error.message : JSON.stringify(error);
+        error instanceof Error
+          ? error.message
+          : typeof error === "object" && error !== null && "type" in error
+            ? String((error as Record<string, unknown>).type)
+            : JSON.stringify(error);
       setSubmitError(msg);
     }
   }

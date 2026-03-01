@@ -1,3 +1,4 @@
+import { useNavigate } from "@solidjs/router";
 import { Trans } from "@lingui-solid/solid/macro";
 import { useMutation } from "@tanstack/solid-query";
 
@@ -14,6 +15,7 @@ export function DeleteServerModal(
   props: DialogProps & Modals & { type: "delete_server" },
 ) {
   const client = useClient();
+  const navigate = useNavigate();
   const { showError, mfaFlow } = useModals();
 
   const deleteServer = useMutation(() => ({
@@ -21,6 +23,10 @@ export function DeleteServerModal(
       const mfa = await client().account.mfa();
       await mfaFlow(mfa as never);
       await props.server.delete(); // TODO: should use ticket in API
+    },
+    onSuccess: () => {
+      props.onClose();
+      navigate("/");
     },
     onError: (error) => {
       if (error instanceof MFACancelledError) return;
