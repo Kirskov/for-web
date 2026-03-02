@@ -17,7 +17,7 @@ export function DeleteServerModal(
 ) {
   const client = useClient();
   const navigate = useNavigate();
-  const { showError, mfaFlow, closeAll } = useModals();
+  const { showError, mfaFlow } = useModals();
   const [pending, setPending] = createSignal(false);
 
   async function onDelete() {
@@ -26,7 +26,7 @@ export function DeleteServerModal(
       const mfa = await client().account.mfa();
       await mfaFlow(mfa as never);
       await props.server.delete(); // TODO: should use ticket in API
-      closeAll();
+      props.onClose();
       navigate("/");
     } catch (error) {
       setPending(false);
