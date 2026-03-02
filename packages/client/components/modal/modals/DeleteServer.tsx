@@ -3,7 +3,6 @@ import { createSignal } from "solid-js";
 import { Trans } from "@lingui-solid/solid/macro";
 
 import { useClient } from "@revolt/client";
-import { useNavigate } from "@revolt/routing";
 import { Dialog, DialogProps } from "@revolt/ui";
 
 import { MFACancelledError, useModals } from "..";
@@ -16,7 +15,6 @@ export function DeleteServerModal(
   props: DialogProps & Modals & { type: "delete_server" },
 ) {
   const client = useClient();
-  const navigate = useNavigate();
   const { showError, mfaFlow } = useModals();
   const [pending, setPending] = createSignal(false);
 
@@ -26,8 +24,7 @@ export function DeleteServerModal(
       const mfa = await client().account.mfa();
       await mfaFlow(mfa as never);
       await props.server.delete(); // TODO: should use ticket in API
-      props.onClose();
-      navigate("/");
+      window.location.href = "/";
     } catch (error) {
       setPending(false);
       if (error instanceof MFACancelledError) return;
