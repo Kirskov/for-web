@@ -46,13 +46,16 @@ COPY packages/js-lingui-solid/ packages/js-lingui-solid/
 RUN pnpm --filter @lingui-solid/babel-plugin-lingui-macro build && \
     pnpm --filter @lingui-solid/babel-plugin-extract-messages build
 
+# Run panda codegen before copying full client source — only needs panda.config.ts
+# which was already copied above, so this layer is cached unless config changes
+RUN pnpm --filter client exec panda codegen
+
 # ── Client source (changes frequently) ───────────────────────────────────────
 COPY packages/client/ packages/client/
 
-# Compile translations, copy assets, generate panda CSS
+# Compile translations and copy assets
 RUN pnpm --filter client exec lingui compile --typescript && \
-    pnpm --filter client exec node scripts/copyAssets.mjs && \
-    pnpm --filter client exec panda codegen
+    pnpm --filter client exec node scripts/copyAssets.mjs
 
 # Build the client with placeholder env vars for runtime injection
 # these are replaced by inject.js at container run startup

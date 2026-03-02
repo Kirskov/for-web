@@ -1,4 +1,4 @@
-import { Show, createEffect } from "solid-js";
+import { Show, createEffect, on } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Motion, Presence } from "solid-motionone";
 
@@ -18,16 +18,18 @@ export function SettingsModal(
   const config = SettingsConfigurations[props.config];
   const client = useClient();
 
-  // Auto-close if the server context is deleted
-  createEffect(() => {
-    if (
-      props.config === "server" &&
-      props.context &&
-      !client().servers.has((props.context as { id: string }).id)
-    ) {
-      props.onClose();
-    }
-  });
+  // Auto-close when the server context is deleted.
+  // defer: true skips the initial run to avoid closing on mount before servers load.
+  if (props.config === "server" && props.context) {
+    const id = (props.context as { id: string }).id;
+    createEffect(
+      on(
+        () => client().servers.has(id),
+        (exists) => { if (!exists) props.onClose(); },
+        { defer: true },
+      ),
+    );
+  }
 
   return (
     <Portal mount={document.getElementById("floating")!}>
