@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # ============================================
 # Stage 1: Build the web client
 # ============================================
@@ -23,8 +24,11 @@ COPY packages/client/package.json packages/client/
 # Copy panda config needed by client's "prepare" lifecycle script (panda codegen)
 COPY packages/client/panda.config.ts packages/client/
 
-# Install dependencies — cached as long as lockfile doesn't change
-RUN pnpm install --frozen-lockfile
+# Install dependencies
+# --mount=type=cache persists the pnpm store across builds on the same host,
+# so packages are not re-downloaded when only source files change.
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 
 ENV BROWSERSLIST_IGNORE_OLD_DATA=1
 
@@ -71,7 +75,8 @@ WORKDIR /app
 
 # Copy the server package and install dependencies
 COPY docker/package.json docker/package-lock.json docker/inject.js ./
-RUN npm ci --omit=dev
+RUN --mount=type=cache,id=npm-store,target=/root/.npm \
+    npm ci --omit=dev
 
 # Copy built static assets from stage 1
 COPY --from=builder /build/packages/client/dist ./dist

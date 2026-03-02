@@ -1,8 +1,9 @@
-import { Show } from "solid-js";
+import { Show, createEffect } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Motion, Presence } from "solid-motionone";
 
 import { Settings, SettingsConfigurations } from "@revolt/app";
+import { useClient } from "@revolt/client";
 import { DialogProps } from "@revolt/ui";
 
 import { Modals } from "../types";
@@ -15,6 +16,18 @@ export function SettingsModal(
 ) {
   // eslint-disable-next-line solid/reactivity
   const config = SettingsConfigurations[props.config];
+  const client = useClient();
+
+  // Auto-close if the server context is deleted
+  createEffect(() => {
+    if (
+      props.config === "server" &&
+      props.context &&
+      !client().servers.has((props.context as { id: string }).id)
+    ) {
+      props.onClose();
+    }
+  });
 
   return (
     <Portal mount={document.getElementById("floating")!}>
