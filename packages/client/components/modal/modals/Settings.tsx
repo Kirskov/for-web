@@ -49,7 +49,7 @@ export function SettingsModal(
             <Motion.div
               style={{
                 height: "100%",
-                "pointer-events": "all",
+                "pointer-events": props.show ? "all" : "none",
                 display: "flex",
                 color: "var(--md-sys-color-on-surface)",
                 background: "var(--md-sys-color-surface-container-highest)",

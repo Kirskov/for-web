@@ -2,7 +2,7 @@
 # ============================================
 # Stage 1: Build the web client
 # ============================================
-FROM node:24-alpine AS builder
+FROM node:24.14.0-alpine3.23 AS builder
 
 RUN apk add --no-cache git python3 make g++
 
@@ -53,9 +53,11 @@ RUN pnpm --filter client exec panda codegen
 # ── Client source (changes frequently) ───────────────────────────────────────
 COPY packages/client/ packages/client/
 
-# Compile translations and copy assets
-RUN pnpm --filter client exec lingui compile --typescript && \
-    pnpm --filter client exec node scripts/copyAssets.mjs
+# Copy assets (static files, does not depend on source changes)
+RUN pnpm --filter client exec node scripts/copyAssets.mjs
+
+# Compile translations (only changes when .po files change)
+RUN pnpm --filter client exec lingui compile --typescript
 
 # Build the client with placeholder env vars for runtime injection
 # these are replaced by inject.js at container run startup
@@ -72,7 +74,7 @@ RUN NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter client exec vite build
 # ============================================
 # Stage 2: Minimal runtime image
 # ============================================
-FROM node:24-alpine
+FROM node:24.14.0-alpine3.23
 
 WORKDIR /app
 
