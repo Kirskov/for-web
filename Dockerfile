@@ -1,12 +1,13 @@
+# syntax=docker/dockerfile:1
 # ============================================
 # Stage 1: Build the web client
 # ============================================
-FROM node:24-alpine AS builder
+FROM node:24.14.0-alpine3.23 AS builder
 
 RUN apk add --no-cache git python3 make g++
 
 # Install pnpm
-RUN corepack enable && corepack prepare pnpm@10.28.1 --activate
+RUN corepack enable
 
 WORKDIR /build
 
@@ -24,23 +25,41 @@ COPY packages/client/package.json packages/client/
 COPY packages/client/panda.config.ts packages/client/
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+# --mount=type=cache persists the pnpm store across builds on the same host,
+# so packages are not re-downloaded when only source files change.
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 
-# Submodules:
-# In CI: actions/checkout@v4 with submodules: recursive handles this automatically.
-# Locally: run `git submodule update --init --recursive` before `docker build`.
-COPY packages/ packages/
+ENV BROWSERSLIST_IGNORE_OLD_DATA=1
 
-# Build sub-dependencies (stoat.js, livekit-components, lingui plugins, panda css etc)
-RUN pnpm --filter stoat.js build && \
-  pnpm --filter solid-livekit-components build && \
-  pnpm --filter @lingui-solid/babel-plugin-lingui-macro build && \
-  pnpm --filter @lingui-solid/babel-plugin-extract-messages build && \
-  pnpm --filter client exec lingui compile --typescript && \
-  pnpm --filter client exec node scripts/copyAssets.mjs && \
-  pnpm --filter client exec panda codegen 
+# ── Sub-dependencies (change rarely) ─────────────────────────────────────────
+# Copy each sub-package source separately so its build layer is only
+# invalidated when that package's own files change.
 
-# Build the client with placeholder env vars for runtime injection 
+COPY packages/stoat.js/ packages/stoat.js/
+RUN pnpm --filter stoat.js build
+
+COPY packages/solid-livekit-components/ packages/solid-livekit-components/
+RUN pnpm --filter solid-livekit-components build
+
+COPY packages/js-lingui-solid/ packages/js-lingui-solid/
+RUN pnpm --filter @lingui-solid/babel-plugin-lingui-macro build && \
+    pnpm --filter @lingui-solid/babel-plugin-extract-messages build
+
+# Run panda codegen before copying full client source — only needs panda.config.ts
+# which was already copied above, so this layer is cached unless config changes
+RUN pnpm --filter client exec panda codegen
+
+# ── Client source (changes frequently) ───────────────────────────────────────
+COPY packages/client/ packages/client/
+
+# Copy assets (static files, does not depend on source changes)
+RUN pnpm --filter client exec node scripts/copyAssets.mjs
+
+# Compile translations (only changes when .po files change)
+RUN pnpm --filter client exec lingui compile --typescript
+
+# Build the client with placeholder env vars for runtime injection
 # these are replaced by inject.js at container run startup
 ENV VITE_API_URL=__VITE_API_URL__
 ENV VITE_WS_URL=__VITE_WS_URL__
@@ -50,20 +69,21 @@ ENV VITE_HCAPTCHA_SITEKEY=__VITE_HCAPTCHA_SITEKEY__
 ENV VITE_CFG_ENABLE_VIDEO=__VITE_CFG_ENABLE_VIDEO__
 ENV BASE_PATH=/
 
-RUN pnpm --filter client exec vite build
+RUN NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter client exec vite build
 
 # ============================================
 # Stage 2: Minimal runtime image
 # ============================================
-FROM node:24-alpine
+FROM node:24.14.0-alpine3.23
 
 WORKDIR /app
 
 # Copy the server package and install dependencies
-COPY docker/package.json docker/inject.js ./
-RUN npm install --omit=dev
+COPY docker/package.json docker/package-lock.json docker/inject.js ./
+RUN --mount=type=cache,id=npm-store,target=/root/.npm \
+    npm ci --omit=dev
 
-# Copy built static assets stage 1
+# Copy built static assets from stage 1
 COPY --from=builder /build/packages/client/dist ./dist
 
 EXPOSE 5000
