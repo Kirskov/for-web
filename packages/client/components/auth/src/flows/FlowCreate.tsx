@@ -27,11 +27,13 @@ export default function FlowCreate() {
     const email = data.get("email") as string;
     const password = data.get("password") as string;
     const captcha = data.get("captcha") as string;
+    const invite = new URLSearchParams(window.location.search).get("invite") || undefined;
 
     await api.post("/auth/account/create", {
       email,
       password,
       captcha,
+      ...(invite ? { invite } : {}),
     });
 
     // FIXME: should tell client if email was sent
