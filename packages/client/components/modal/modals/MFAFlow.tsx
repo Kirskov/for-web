@@ -3,6 +3,7 @@ import { BiRegularArchive, BiSolidKey, BiSolidKeyboard } from "solid-icons/bi";
 import {
   For,
   Match,
+  Show,
   Switch,
   createEffect,
   createSignal,
@@ -15,6 +16,7 @@ import type { API } from "stoat.js";
 import {
   CategoryButton,
   CircularProgress,
+  ColouredText,
   Column,
   Dialog,
   DialogProps,
@@ -22,7 +24,6 @@ import {
   Text,
 } from "@revolt/ui";
 
-import { useModals } from "..";
 import { Modals } from "../types";
 
 /**
@@ -32,7 +33,8 @@ export function MFAFlowModal(
   props: DialogProps & Modals & { type: "mfa_flow" },
 ) {
   const { t } = useLingui();
-  const { showError } = useModals();
+
+  const [submitError, setSubmitError] = createSignal<string | undefined>();
 
   // Keep track of available methods
   const [methods, setMethods] = createSignal<API.MFAMethod[] | undefined>(
@@ -96,8 +98,14 @@ export function MFAFlowModal(
       }
 
       props.onClose();
-    } catch (error) {
-      showError(error);
+    } catch (error: unknown) {
+      const msg =
+        error instanceof Error
+          ? error.message
+          : typeof error === "object" && error !== null && "type" in error
+            ? String((error as Record<string, unknown>).type)
+            : JSON.stringify(error);
+      setSubmitError(msg);
     }
   }
 
@@ -107,6 +115,7 @@ export function MFAFlowModal(
   }
 
   function onBack() {
+    setSubmitError(undefined);
     if (methods()!.length === 1) {
       onCancel();
     } else {
@@ -197,6 +206,12 @@ export function MFAFlowModal(
               </Match>
             </Switch>
           </Text>
+
+          <Show when={submitError()}>
+            <ColouredText colour="var(--md-sys-color-error)">
+              {submitError()}
+            </ColouredText>
+          </Show>
 
           <Switch fallback={<CircularProgress />}>
             <Match when={selectedMethod()}>
